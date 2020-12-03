@@ -98,9 +98,9 @@ def make_mask_by_color(color, image):
     mask_b = image[:, :, 2] == b_color # punti con mia comp blu
     
     # creo la maschera per i punti in cui ho True per tutte le maschere delle componenti colore
-    mask = mask_r[:, :] == mask_g[:, :]
-    mask = mask[:, :] == mask_b[:, :]
- 
+    mask = np.logical_and(mask_r, mask_g)
+    mask = np.logical_and(mask, mask_b)
+
     return mask
  
 def split_image_by_color(mask, img):
@@ -172,6 +172,7 @@ def main():
     # Definisco un dizionario dei colori presenti nell'immagine colorate con etichette per le rispettive 
     # sezioni.
     dictColori = {
+        "ffffff": "vetrino",
         "a3a745": "strato_corneo",
         "00ffff": "epidermide",
         "1937be": "derma"
