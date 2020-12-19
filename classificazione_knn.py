@@ -163,3 +163,45 @@ def colimage_to_classes(img):
     classes_matrix = np.array(classes_matrix)
 
     return classes_matrix
+
+def class_to_pixel (intClass):
+    """
+    Converte una classe rappresentata da un intero
+    in una lista di componenti colore.
+ 
+    intClass: int, classe utilizzata come label nei
+        dati di test o training.
+    """
+ 
+    if intClass == 0: # vetrino
+        return [255, 255, 255, 255]
+    elif intClass == 1: # strato corneo
+        return [163, 167, 69, 255]
+    elif intClass == 2: # epidermide
+        return [0, 255, 255, 255]
+    elif intClass == 3: # derma
+        return [25, 55, 190, 255]
+    else: # vasi
+        return [255, 0, 255, 255]
+
+
+def classes_to_colimage(y, shape):
+    """
+    Converte un array di classi y in un'immagine
+    da visualizzare con i colori originali.
+    
+    y: numpy array, array unidimensionale di classi
+        associate ai pixel di un'immagine.
+    shape: iterable, la forma dell'immagine originale.
+    """
+
+    pixel_list = []
+    
+    for pixel in y:
+        pixel_list.append(class_to_pixel(pixel))
+
+    pixel_list = np.array(pixel_list)
+    
+    final_image = pixel_list.reshape(shape)
+
+    return final_image
