@@ -1,0 +1,2 @@
+score, window_size, features, neighbors0.6688554139636708, 5, ['R', 'G', 'B', 'R_mf', 'G_mf', 'B_mf'], 5
+0.6813019021203939, 5, ['R', 'G', 'B', 'R_mf', 'G_mf', 'B_mf'], 10
