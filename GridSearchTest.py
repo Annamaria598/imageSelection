@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
-
-
 from classificazione_knn import image_to_data, colimage_to_classes, local_entropy, classes_to_colimage
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import matthews_corrcoef
@@ -11,10 +8,7 @@ import numpy as np
 import imageio
 import matplotlib.pyplot as plt
 import csv
-
-
-# In[2]:
-
+import time
 
 # parametri per generazione features
 # per ogni combinazione possibile bisogna generare
@@ -53,11 +47,8 @@ feature_set = [
 # parametri per il knn
 neighbors = [5, 10, 25, 50, 100, 300]
 
-
-# In[3]:
-
-
 # Generazione dei layers per tutti i parametri riguardanti i dati
+print("Generazione dei dati...")
 for s in window_size:
     # training data
     data = image_to_data("img/pelle303R.PNG", size=s)
@@ -77,40 +68,19 @@ for s in window_size:
             csvw = csv.writer(f)
             csvw.writerows(value)
 
-
-# In[4]:
-
-
 # generazione delle classi per i pixel
 y = colimage_to_classes("img/pelle303R_colors.PNG")
 
 # classi dei pixel per l'immagine di test
 y_test = colimage_to_classes("img/pelle305R_colors.PNG")
-
-
-# In[5]:
-
+print("completa.")
 
 # Generazione dei jobs per i modelli da allenare
+print("generazione jobs da eseguire...")
 from itertools import product
 
 jobs = list(product(window_size, feature_set, neighbors))
-
-
-# In[6]:
-
-
-len(list(jobs))
-
-
-# In[7]:
-
-
-jobs[0]
-
-
-# In[8]:
-
+print("Completa. {} jobs da eseguire".format(len(jobs)))
 
 from multiprocessing import Pool
 
@@ -163,7 +133,7 @@ def train_model(job):
     # e righe per pixel
     X_test = X_test.T
     
-    y_predette = knn.predict(X_test[:, :len(job[1])])
+    y_predette = knn.predict(X_test)
     
     score = matthews_corrcoef(y_test, y_predette)
     
@@ -171,19 +141,16 @@ def train_model(job):
     
 
 if __name__ == '__main__':
+    print("{} : Inizio training".format(time.ctime()))
     with Pool(5) as p:
-        results = p.map(train_model, jobs[:2])
+        results = p.map(train_model, jobs)
         
         with open("results.txt", "w") as f:
             f.write("score, window_size, features, neighbors\n")
             for r in results:
-                f.write(str(r[0]) + ", " + str(r[1][0]) + ", " + str(r[1][1]) + ", " + str(r[1][2]) + "\n")
+                f.write(str(r[0]) + ", " + str(r[1][0]) + ", \"" + str(r[1][1]) + "\", " + str(r[1][2]) + "\n")
                 
-        print("ALL DONE.")
-
-
-# In[ ]:
-
+        print("{} : Training completo".format(time.ctime()))
 
 
 
