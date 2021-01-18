@@ -155,8 +155,6 @@ def image_to_data(img, size=13):
     # attorno all'intervallo -0.5, 0.5
     h = h / 360
     layers['h'] = h - 0.5
-    layers['hsv_sin'] = np.sin(h*2*np.pi)*s*v
-    layers['hsv_cos'] = np.cos(h*2*np.pi)*s*v
     layers['s'] = s - 0.5
     layers['v'] = v - 0.5
 
@@ -267,38 +265,3 @@ def classes_to_colimage(y, shape):
     final_image = pixel_list.reshape(shape)
 
     return final_image
-
-
-def moda(l):
-    
-    classi = list(set(l))
-    
-    contatore = {}
-    for el in classi:
-        contatore[el] = 0
-    
-    for el in l:
-        contatore[el] += 1
-        
-    keymax = max(contatore, key=contatore.get)
-    
-    return keymax
-
-
-def postprocessing_classes(y, shape, window_size=3):
-    """
-    Effettuiamo il post-processing su un'immagine generata
-    assegnando ad ogni pixel la classe più ricorrente nel
-    proprio intorno di lato window_size.
-
-    y: classi ottenute dai nostri modelli
-    shape: forma dell'immagine originale,
-    window_size: dimensione della finestra per il filtro per post-processing.
-    """
-
-    y_matrix = y.reshape(shape[:2])
-
-    y_matrix = nd.generic_filter(y_matrix, moda, window_size)
-
-    # srotoliamo la matrice per poter riutilizzare classes_to_colimage
-    return y_matrix.ravel()
