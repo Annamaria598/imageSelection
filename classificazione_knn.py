@@ -5,6 +5,8 @@ import sklearn
 from skimage.color import rgb2lab, rgba2rgb, rgb2hsv
 from scipy.stats import entropy
 from sklearn.metrics import matthews_corrcoef
+from sklearn.neighbors import KNeighborsClassifier
+import matplotlib.pyplot as plt
 
 def _entropy(values):
     probabilities = np.bincount(values.astype(np.int)) / float(len(values))
@@ -302,3 +304,159 @@ def postprocessing_classes(y, shape, window_size=3):
 
     # srotoliamo la matrice per poter riutilizzare classes_to_colimage
     return y_matrix.ravel()
+
+
+def select_layers(layers, feature_names=[]):
+    """Seleziona dall'insieme di tutte le features solo quelle il cui
+    nome compare in feature_names. Se feature_names è vuota o non presente
+    vengono selezionate tutte le features in layers."""
+    
+    if len(feature_names) == 0:
+        feature_names = [
+            
+            "R", "G", "B",
+            "R_mf", "G_mf", "B_mf",
+            "R_edge", "G_edge", "B_edge",
+            "R_variance", "G_variance", "B_variance",
+
+            "L", "a", "b",
+            "L_mf", "a_mf", "b_mf",
+            "L_edge", "a_edge", "b_edge",
+            "L_variance", "a_variance", "b_variance",
+
+            "h", "s", "v",
+            "h_mf", "s_mf", "v_mf",
+            "h_edge", "s_edge", "v_edge",
+            "h_variance", "s_variance", "v_variance",
+
+            "entropy"
+        ]
+    
+    selected = [layers[fn] for fn in feature_names]
+    
+    # Unisco i vettori di features in una matrice
+    # con una riga per featur ed una colonna per pixel
+    X = np.stack([l.ravel() for l in selected])
+
+    # Traspongo perchè voglio colonne per features
+    # e righe per pixel
+    return X.T
+
+
+def image_segmentation(
+    train_images,
+    train_images_segmented,
+    test_image,
+    test_image_segmented,
+    window_size = 30,
+    neighbors = 5,
+    window_size_postprocessing = 3,
+    feature_names = []
+    ):
+    """
+    Allena un modello knn per la segmentazione, lo restituisce e mostra
+    allo stesso tempo un grafico per rappresentarne la qualità.
+    """
+    
+    knn = KNeighborsClassifier(n_neighbors=neighbors)
+    
+    for ti, tis in zip(train_images, train_images_segmented):
+        # estrazione delle feature dall'immagine di training
+        layers = image_to_data(ti, size=window_size)
+
+        # selezione delle features da utilizzare per questo modello
+        X = select_layers(layers, feature_names)
+
+        # estrazione delle classi dall'immagine segmentata a mano
+        y = colimage_to_classes(tis)
+
+        # training di un KNN
+        knn.fit(X, y)
+    
+    # estrazione delle features dall'immagine di test
+    test_layers = image_to_data(test_image, size=window_size)
+    
+    # selezione delle features da utilizzare
+    X_test = select_layers(test_layers, feature_names)
+    
+    # estrazione delle classi dall'immagine di test segmentata a mano
+    y_test = colimage_to_classes(test_image_segmented)
+    
+    # predizione delle classi sull'immagine di test
+    y_predette = knn.predict(X_test)
+    
+    # calcolo dello score per l'immagine segmentata dal modello
+    matthews_score = matthews_corrcoef(y_test, y_predette)
+    
+    # recupero l'immagine di test originale
+    test_img = imageio.imread(test_image_segmented)
+    
+    # generiamo l'immagine ottenuta dal knn
+    img_predetta = classes_to_colimage(y_predette, test_img.shape)
+    
+    # esecuzione post-processing su y ottenute dal knn
+    y_postprocessing = postprocessing_classes(y_predette, test_img.shape, window_size_postprocessing)
+    
+    # generazione dell'immagine dopo il postprocessing
+    img_postprocessing = classes_to_colimage(y_postprocessing, test_img.shape)
+    
+    # calcolo dello score per immagine segmentata dal modello dopo il post-processing
+    matthews_score_postprocessing = matthews_corrcoef(y_test, y_postprocessing)
+    
+    # apertura immagine di test originale
+    test_img_orig = imageio.imread(test_image)
+    
+    # creazione dell'immagine finale
+    fig, axs = plt.subplots(2, 2, figsize=(10, 8))
+    axs[0, 0].imshow(test_img_orig)
+    axs[0, 0].set_title('Immagine originale')
+    axs[0, 1].imshow(test_img)
+    axs[0, 1].set_title('Immagine segmentata manualmente')
+    axs[1, 0].imshow(img_predetta)
+    axs[1, 0].set_title('Immagine segmentata dal modello')
+    axs[1, 1].imshow(img_postprocessing)
+    axs[1, 1].set_title('Immagine segmentata dopo postprocessing')
+    
+    # Aggiungo al grafico i matthews coefficients
+    max_y = axs[1, 1].get_ylim()[0]
+    axs[1, 0].text(0, max_y+70, "Matthews Coeff: {}".format(matthews_score))
+    axs[1, 1].text(0, max_y+70, "Matthews Coeff: {}".format(matthews_score_postprocessing))
+
+    # restituisco il modello generato
+    return knn
+
+
+def test_on_multiple_images(model,
+                            test_images,
+                            test_images_segmented,
+                            window_size=30,
+                            feature_names=[],
+                            window_size_postprocessing=3):
+    """Restituisce il matthews coefficient ottenuto con
+    un modello in media su più immagini."""
+    
+    X_test_matrices = []
+    y_test_matrices = []
+    
+    for test_i, test_i_s in zip(test_images, test_images_segmented):
+        # estrazione delle features dall'immagine di test
+        test_layers = image_to_data(test_i, size=window_size)
+
+        # selezione delle features da utilizzare
+        X_test_matrices.append(select_layers(test_layers, feature_names))
+
+        # estrazione delle classi dall'immagine di test segmentata a mano
+        y_test_matrices.append(colimage_to_classes(test_i_s))
+
+    # concatenazione di tutti i dati
+    X_test = np.concatenate(X_test_matrices)
+    
+    y_test = np.concatenate(y_test_matrices)
+    
+    # predizione delle classi sull'immagine di test
+    y_predette = model.predict(X_test)
+    
+    # calcolo dello score per l'immagine segmentata dal modello
+    matthews_score = matthews_corrcoef(y_test, y_predette)
+    
+    return matthews_score
