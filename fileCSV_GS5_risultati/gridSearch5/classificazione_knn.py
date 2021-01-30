@@ -4,7 +4,7 @@ import scipy.ndimage as nd
 import sklearn
 from skimage.color import rgb2lab, rgba2rgb, rgb2hsv
 from scipy.stats import entropy
-from sklearn.metrics import matthews_corrcoef, confusion_matrix
+from sklearn.metrics import matthews_corrcoef
 from sklearn.neighbors import KNeighborsClassifier
 import matplotlib.pyplot as plt
 
@@ -356,7 +356,7 @@ def train_on_multi(
     """
     Allena un modello knn per la segmentazione a partire da più
     immagini e lo testa su più immagini.
-    Restituisce il modello allenato, lo score raggiunto e la confusion matrix.
+    Restituisce il modello allenato e lo score raggiunto.
 
     train_images: lista di nomi di file delle immagini originali;
     train_images_segmented: lista di nomi di file delle immagini segmentate manualmente;
@@ -389,9 +389,9 @@ def train_on_multi(
     knn.fit(X, y)
     
     # test sulle immagini di test
-    matthews_score, c_matrix = test_on_multiple_images(knn, test_images, test_images_segmented, window_size, feature_names, window_size_postprocessing)
+    matthews_score = test_on_multiple_images(knn, test_images, test_images_segmented, window_size, feature_names, window_size_postprocessing)
 
-    return knn, matthews_score, c_matrix
+    return knn, matthews_score
 
 
 def image_segmentation(
@@ -469,7 +469,7 @@ def test_on_multiple_images(model,
                             window_size=30,
                             feature_names=[],
                             window_size_postprocessing=3):
-    """Restituisce il matthews coefficient e la confusion matrix ottenuti con
+    """Restituisce il matthews coefficient ottenuto con
     un modello in media su più immagini."""
     
     X_test_matrices = []
@@ -495,8 +495,5 @@ def test_on_multiple_images(model,
     
     # calcolo dello score per l'immagine segmentata dal modello
     matthews_score = matthews_corrcoef(y_test, y_predette)
-
-    # calcolo delal confusion matrix
-    cm = confusion_matrix(y_test, y_predette)
     
-    return matthews_score, cm
+    return matthews_score

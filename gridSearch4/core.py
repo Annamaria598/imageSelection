@@ -143,8 +143,7 @@ def main():
         "ffffff": "vetrino",
         "a3a745": "strato_corneo",
         "00ffff": "epidermide",
-        "1937be": "derma",
-        "ff00ff": "vasi"
+        "1937be": "derma"
     }
 
     imgPortionsList = find_portions(dictColori, imgList)
